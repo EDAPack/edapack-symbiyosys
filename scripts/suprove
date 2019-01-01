@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# First, determine the location of this script
+if test -f $0; then
+  script_dir=$(dirname $0)
+  script_dir=$(cd $script_dir ; pwd)
+else
+  # Find ourselves in the PATH
+  for elem in $(echo PATH | sed -e 's%:% %g'); do
+    script=${elem}/$0
+    if test -f $script; then
+      script_dir=$elem
+      break
+    fi
+  done
+fi
+
+symbiyosys=$(dirname $script_dir)
+
+tool=super_prove; if [ "$1" != "${1#+}" ]; then tool="${1#+}"; shift; fi
+exec $symbiyosys/super_prove/bin/${tool}.sh "$@"
+
