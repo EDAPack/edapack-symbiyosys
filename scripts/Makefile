@@ -1,8 +1,10 @@
 
-SCRIPTS_DIR=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-EDAPACK_SYMBIYOSYS_DIR=$(abspath $(SCRIPTS_DIR)/..)
+SCRIPTS_DIR:=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+EDAPACK_SYMBIYOSYS_DIR:=$(abspath $(SCRIPTS_DIR)/..)
 PACKAGES_DIR=$(EDAPACK_SYMBIYOSYS_DIR)/packages
 BUILD_DIR=$(EDAPACK_SYMBIYOSYS_DIR)/build
+
+include $(EDAPACK_SYMBIYOSYS_DIR)/etc/edapack-symbiyosys.info
 
 YOSYS_VERSION=0.8
 YOSYS_DIR=yosys-master
@@ -41,7 +43,8 @@ SBY_ZIP=$(SYMBIYOSYS_DIR).zip
 SBY_URL=https://github.com/YosysHQ/SymbiYosys/archive/master.zip
 
 SUPER_PROVE_TGZ=super_prove.tar.gz
-SUPER_PROVE_URL=https://downloads.bvsrc.org/super_prove/super_prove-hwmcc17_final-2-d7b71160dddb-CentOS_6.7-Release.tar.gz
+#SUPER_PROVE_URL=https://downloads.bvsrc.org/super_prove/super_prove-hwmcc17_final-2-d7b71160dddb-CentOS_6.7-Release.tar.gz
+SUPER_PROVE_URL=https://downloads.bvsrc.org/super_prove/super_prove-hwmcc17_final-2-d7b71160dddb-CentOS_7-Release.tar.gz
 
 EXTAVY_URL=https://bitbucket.org/arieg/extavy.git
 
@@ -59,17 +62,30 @@ UNZIP=unzip -o -q
 UNTARGZ=tar xzf
 endif
 
+uname_o:=$(shell uname -o)
+
+ifeq (Linux,$(uname_o))
+platform=linux_x86_64
+else
+ifeq (GNU/Linux,$(uname_o))
+platform=linux_x86_64
+else
+platform=unknown
+endif
+endif
 
 
-all : \
-	$(BUILD_DIR)/z3.d \
-	$(BUILD_DIR)/yices2.d \
-	$(BUILD_DIR)/yosys.d \
-	$(BUILD_DIR)/boolector.d \
-	$(BUILD_DIR)/sby.d \
-	$(BUILD_DIR)/super_prove.d \
-	$(BUILD_DIR)/symbiyosys/bin/sby
+all : $(BUILD_DIR)/symbiyosys-$(platform)-$(version).tar.gz
 
+$(BUILD_DIR)/symbiyosys-$(platform)-$(version).tar.gz : \
+		$(BUILD_DIR)/z3.d \
+		$(BUILD_DIR)/yices2.d \
+		$(BUILD_DIR)/yosys.d \
+		$(BUILD_DIR)/boolector.d \
+		$(BUILD_DIR)/sby.d \
+		$(BUILD_DIR)/super_prove.d \
+		$(BUILD_DIR)/symbiyosys/bin/sby
+	$(Q)cd $(BUILD_DIR) ; tar czf symbiyosys-$(platform)-$(version).tar.gz symbiyosys
 
 $(BUILD_DIR)/yosys.d : \
 		$(PACKAGES_DIR)/$(YOSYS_ZIP) \
@@ -107,7 +123,7 @@ $(BUILD_DIR)/z3.d : $(PACKAGES_DIR)/$(Z3_ZIP)
 	$(Q)mkdir -p $(BUILD_DIR)/z3
 	$(Q)cd $(BUILD_DIR)/z3 ; $(UNZIP) $(PACKAGES_DIR)/$(Z3_ZIP)
 	$(Q)cd $(BUILD_DIR)/z3/$(Z3_DIR) ; $(UNZIP) $(PACKAGES_DIR)/$(Z3_ZIP)
-	$(Q)cd $(BUILD_DIR)/z3/$(Z3_DIR) ; \
+	$(Q)cd $(BUILD_DIR)/z3/$(Z3_DIR) ; export PYTHON=python3 ; \
 		./configure --prefix=$(SYMBIYOSYS_PREFIX) 
 	$(Q)cd $(BUILD_DIR)/z3/$(Z3_DIR)/build ; $(MAKE)
 	$(Q)cd $(BUILD_DIR)/z3/$(Z3_DIR)/build ; $(MAKE) install
@@ -124,6 +140,8 @@ $(BUILD_DIR)/boolector.d : \
 	$(Q)cd $(BUILD_DIR)/boolector;$(UNZIP) $(PACKAGES_DIR)/$(LINGELING_ZIP)
 	$(Q)cd $(BUILD_DIR)/boolector ; \
 		mv $(LINGELING_DIR) $(BOOLECTOR_DIR)/deps/lingeling
+	$(Q)cd $(BUILD_DIR)/boolector/$(BOOLECTOR_DIR)/deps/lingeling ; \
+		sed -i -e 's/\bclone\b/prv_clone/g' ilingeling.c
 	$(Q)cd $(BUILD_DIR)/boolector;$(UNZIP) $(PACKAGES_DIR)/$(BTOR2TOOLS_ZIP)
 	$(Q)cd $(BUILD_DIR)/boolector ; \
 		mv $(BTOR2TOOLS_DIR) $(BOOLECTOR_DIR)/deps/btor2tools
@@ -212,5 +230,16 @@ $(BUILD_DIR)/symbiyosys/bin/sby : $(SCRIPTS_DIR)/sby
 	$(Q)cp $^ $@
 	$(Q)chmod +x $@
 
+release : $(BUILD_DIR)/symbiyosys-$(platform)-$(version).tar.gz 
+	$(Q)$(EDAPACK_SYMBIYOSYS_DIR)/scripts/upload.py \
+		--org EDAPack --repo edapack-symbiyosys \
+		--key $(GITHUB_API_TOKEN) --version $(version) \
+		$(BUILD_DIR)/symbiyosys-$(platform)-$(version).tar.gz
+
 clean :
 	$(Q)rm -rf $(BUILD_DIR)
+
+clean-all :
+	$(Q)rm -rf $(BUILD_DIR) $(PACKAGES_DIR)
+
+
