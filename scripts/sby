@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #****************************************************************************
 #* EDAPack wrapper script for SymbiYosys
 #****************************************************************************
@@ -18,10 +18,11 @@ else
   done
 fi
 
-EDAPACK=$(dirname $script_dir)
+EDAPACK_SBY=$(dirname $script_dir)
 
 # Ensure SymbiYosys finds its sub-components
-export PATH=$EDAPACK/symbiyosys/bin:$PATH
+export PATH=$EDAPACK_SBY/symbiyosys/bin:$PATH
+export LD_LIBRARY_PATH=$EDAPACK_SBY/symbiyosys/lib:$LD_LIBRARY_PATH
 
-exec $EDAPACK/symbiyosys/bin/sby ${@:1}
+exec $EDAPACK_SBY/symbiyosys/bin/sby ${@:1}
 
