@@ -108,10 +108,14 @@ $(PACKAGE) : \
 		$(BUILD_DIR)/stdcpp.d \
 		$(BUILD_DIR)/symbiyosys/bin/sby \
 		$(PACKAGES_DIR)/install.py \
-		$(EDAPACK_SYMBIYOSYS_DIR)/etc/package.info
+		$(EDAPACK_SYMBIYOSYS_DIR)/etc/package.info \
+		$(EDAPACK_SYMBIYOSYS_DIR)/etc/modulefile
 	$(Q)mkdir -p $(BUILD_DIR)/symbiyosys/etc
 	$(Q)cp $(EDAPACK_SYMBIYOSYS_DIR)/etc/package.info $(BUILD_DIR)/symbiyosys/etc
 	$(Q)cp $(PACKAGES_DIR)/install.py $(BUILD_DIR)/symbiyosys/etc
+	$(Q)sed -e 's/{{version}}/$(version)/g' \
+		$(EDAPACK_SYMBIYOSYS_DIR)/etc/modulefile > \
+		$(BUILD_DIR)/symbiyosys/etc/modulefile
 	$(Q)cd $(BUILD_DIR)/symbiyosys ; tar czf $(PACKAGE) *
 
 #YOSYS_EXTRA_CXXFLAGS += -I$(BUILD_DIR)/yosys/deps/include
@@ -313,6 +317,7 @@ $(BUILD_DIR)/super_prove.d : $(PACKAGES_DIR)/$(SUPER_PROVE_TGZ)
 	$(Q)mkdir -p $(BUILD_DIR)
 	$(Q)cd $(BUILD_DIR) ; $(UNTARGZ) $(PACKAGES_DIR)/$(SUPER_PROVE_TGZ)
 	$(Q)cd $(BUILD_DIR) ; mv super_prove $(SYMBIYOSYS_PREFIX)
+	$(Q)mkdir -p $(SYMBIYOSYS_PREFIX)/bin
 	$(Q)cp $(SCRIPTS_DIR)/suprove $(SYMBIYOSYS_PREFIX)/bin/suprove
 	$(Q)chmod +x $(SYMBIYOSYS_PREFIX)/bin/suprove
 	$(Q)touch $@
