@@ -3,6 +3,7 @@ SCRIPTS_DIR:=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 EDAPACK_SYMBIYOSYS_DIR:=$(abspath $(SCRIPTS_DIR)/..)
 PACKAGES_DIR=$(EDAPACK_SYMBIYOSYS_DIR)/packages
 BUILD_DIR=$(EDAPACK_SYMBIYOSYS_DIR)/build
+EDAPACK_BUILD_URL=https://github.com/EDAPack/edapack-build
 
 include $(EDAPACK_SYMBIYOSYS_DIR)/etc/package.info
 
@@ -104,8 +105,14 @@ $(PACKAGE) : \
 		$(BUILD_DIR)/boolector.d \
 		$(BUILD_DIR)/sby.d \
 		$(BUILD_DIR)/super_prove.d \
-		$(BUILD_DIR)/symbiyosys/bin/sby
-	$(Q)cd $(BUILD_DIR) ; tar czf symbiyosys-$(platform)-$(version).tar.gz symbiyosys
+		$(BUILD_DIR)/stdcpp.d \
+		$(BUILD_DIR)/symbiyosys/bin/sby \
+		$(PACKAGES_DIR)/install.py \
+		$(EDAPACK_SYMBIYOSYS_DIR)/etc/package.info
+	$(Q)mkdir -p $(BUILD_DIR)/symbiyosys/etc
+	$(Q)cp $(EDAPACK_SYMBIYOSYS_DIR)/etc/package.info $(BUILD_DIR)/symbiyosys/etc
+	$(Q)cp $(PACKAGES_DIR)/install.py $(BUILD_DIR)/symbiyosys/etc
+	$(Q)cd $(BUILD_DIR)/symbiyosys ; tar czf $(PACKAGE) *
 
 #YOSYS_EXTRA_CXXFLAGS += -I$(BUILD_DIR)/yosys/deps/include
 YOSYS_EXTRA_CXXFLAGS += -I$(SYMBIYOSYS_PREFIX)/lib/$(FFI_DIR)/include
@@ -195,7 +202,10 @@ $(BUILD_DIR)/yices2.d : \
 	$(Q)cd $(BUILD_DIR)/yices2/$(YICES2_DIR) ; autoconf
 	$(Q)cd $(BUILD_DIR)/yices2/$(YICES2_DIR) ; \
 		./configure --prefix=$(SYMBIYOSYS_PREFIX) \
-			LDFLAGS="-L$(SYMBIYOSYS_PREFIX)/lib"
+			LDFLAGS="-L$(SYMBIYOSYS_PREFIX)/lib" \
+			CFLAGS="-I$(SYMBIYOSYS_PREFIX)/include" \
+			--with-pic-gmp=$(SYMBIYOSYS_PREFIX)/lib/libgmp.a \
+			--with-pic-include-dir=$(SYMBIYOSYS_PREFIX)/include 
 	$(Q)cd $(BUILD_DIR)/yices2/$(YICES2_DIR) ; $(MAKE)
 	$(Q)cd $(BUILD_DIR)/yices2/$(YICES2_DIR) ; $(MAKE) install
 	$(Q)touch $@
@@ -323,6 +333,14 @@ $(BUILD_DIR)/extavy.d :
 		cp avy/src/{avy,avybmc} $(SYMBIYOSYS_PREFIX)/bin
 	$(Q)touch $@
 
+WHICH_LIBSTDCPP:=$(shell $(CXX) -print-file-name=libstdc++.so)
+
+$(BUILD_DIR)/stdcpp.d :
+	$(Q)mkdir -p $(SYMBIYOSYS_PREFIX)/lib
+	$(Q)cd `dirname $(WHICH_LIBSTDCPP)`; \
+		tar cf - libstdc++.so* | (cd $(SYMBIYOSYS_PREFIX)/lib ; tar xf -)
+	$(Q)touch $@
+
 $(BUILD_DIR)/symbiyosys/bin/sby : $(SCRIPTS_DIR)/sby
 	$(Q)mkdir -p `dirname $(@)`
 	$(Q)cp $^ $@
@@ -332,6 +350,18 @@ release : $(PACKAGE) $(PACKAGES_DIR)/upload.py
 	$(Q)python3 $(PACKAGES_DIR)/upload.py \
 		--org EDAPack --repo symbiyosys \
 		--key $(GITHUB_API_TOKEN) --version $(version) $(PACKAGE)
+
+$(PACKAGES_DIR)/install.py :
+	$(Q)mkdir -p $(PACKAGES_DIR)
+	$(Q)$(WGET) -O $@ \
+          $(EDAPACK_BUILD_URL)/raw/master/scripts/install.py || \
+		(rm -f $@ ; exit 1)
+
+$(PACKAGES_DIR)/upload.py :
+	$(Q)mkdir -p $(PACKAGES_DIR)
+	$(Q)$(WGET) -O $@ \
+          $(EDAPACK_BUILD_URL)/raw/master/scripts/upload.py || \
+		(rm -rf $@ ; exit 1)
 
 clean :
 	$(Q)rm -rf $(BUILD_DIR)
