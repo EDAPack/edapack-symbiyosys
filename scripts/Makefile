@@ -4,7 +4,7 @@ EDAPACK_SYMBIYOSYS_DIR:=$(abspath $(SCRIPTS_DIR)/..)
 PACKAGES_DIR=$(EDAPACK_SYMBIYOSYS_DIR)/packages
 BUILD_DIR=$(EDAPACK_SYMBIYOSYS_DIR)/build
 
-include $(EDAPACK_SYMBIYOSYS_DIR)/etc/edapack-symbiyosys.info
+include $(EDAPACK_SYMBIYOSYS_DIR)/etc/package.info
 
 GNU_MIRROR_URL ?= http://mirrors.kernel.org/gnu
 
@@ -93,10 +93,11 @@ platform=unknown
 endif
 endif
 
+PACKAGE=$(BUILD_DIR)/symbiyosys-$(platform)-$(version).tar.gz
 
-all : $(BUILD_DIR)/symbiyosys-$(platform)-$(version).tar.gz
+all : $(PACKAGE)
 
-$(BUILD_DIR)/symbiyosys-$(platform)-$(version).tar.gz : \
+$(PACKAGE) : \
 		$(BUILD_DIR)/z3.d \
 		$(BUILD_DIR)/yices2.d \
 		$(BUILD_DIR)/yosys.d \
@@ -327,11 +328,10 @@ $(BUILD_DIR)/symbiyosys/bin/sby : $(SCRIPTS_DIR)/sby
 	$(Q)cp $^ $@
 	$(Q)chmod +x $@
 
-release : $(BUILD_DIR)/symbiyosys-$(platform)-$(version).tar.gz 
-	$(Q)$(EDAPACK_SYMBIYOSYS_DIR)/scripts/upload.py \
-		--org EDAPack --repo edapack-symbiyosys \
-		--key $(GITHUB_API_TOKEN) --version $(version) \
-		$(BUILD_DIR)/symbiyosys-$(platform)-$(version).tar.gz
+release : $(PACKAGE) $(PACKAGES_DIR)/upload.py
+	$(Q)python3 $(PACKAGES_DIR)/upload.py \
+		--org EDAPack --repo symbiyosys \
+		--key $(GITHUB_API_TOKEN) --version $(version) $(PACKAGE)
 
 clean :
 	$(Q)rm -rf $(BUILD_DIR)
