@@ -1,5 +1,8 @@
 # ChangeLog
 
+## 0.0.2
+- Update scripts and SymbiYosys version
+
 ## 0.0.1
 - Initial release of EDAPack SymbiYosys
 - SymbiYosys - #0772456
